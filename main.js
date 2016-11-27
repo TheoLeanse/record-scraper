@@ -79,15 +79,15 @@ function digStore (page) {
 	const url = this.url;
 	const selectors = this.secondarySelectors;
 	const records = [];
-	$(this.primarySelector, page).each(function (i, el) {
+	$(this.primarySelector, page).each((i, el) => {
 		record = selectors.map(selector => {
 			// links are different
 			if (selector === 'a' || selector === 'a.archive-product-link') return $(selector, el).attr('href');
 			return $(selector, el).first().text().trim().replace(/\n/g, '');
 		});
-		records.push(record);
+		records.push(record.filter(Boolean)); // filtering Boolean means we can't assume a particular order in the results (i.e. empty descriptions)
 	});
-	return records;
+	return records.filter(noEmptyArrays);
 };
 
 function work (store) {
@@ -98,3 +98,9 @@ function work (store) {
 
 Promise.all(stores.map(work))
 	.then(console.log);
+
+// TODO: de-dupe and remove empty
+
+function noEmptyArrays (entry) {
+	return entry.length;
+}
