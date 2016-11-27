@@ -5,54 +5,96 @@ const stores = [
 	{
 		name: 'rubadub',
 		url: 'http://www.rubadub.co.uk/records',
-		selector: '.product-name'
+		primarySelector: '.product-name',
+		secondarySelectors: [
+			'.artist-name',
+			'.record-name',
+			'.record-label',
+			'a'
+		]
 	},
 	{
 		name: 'boomkat',
 		url: 'https://boomkat.com',
-		selector: '.product_item' // .release__details
+		primarySelector: '.product_item',
+		secondarySelectors: [
+			'.release__artist',
+			'.release__title',
+			'.release__label',
+			'.release__genre',
+			'.product-item-review',
+			'a'
+		]
 	},
 	{
 		name: 'hardwax',
 		url: 'https://hardwax.com/?paginate_by=50',
-		selector: '.listing'
-	},
-	{
-		name: 'test pressing',
-		url: 'http://testpressing.org',
-		selector: '.post-title'
+		primarySelector: '.listing',
+		secondarySelectors: [
+			'.linebig', // artist and title
+			'.linesmall a', // label
+			'.linesmall p', // description
+			'a'
+		]
 	},
 	{
 		name: 'honest jons',
 		url: 'http://honestjons.com/shop/latest_100_arrivals',
-		selector: '.item'
+		primarySelector: '.item',
+		secondarySelectors: [
+			'h2', // artist
+			'h3', // title
+			'h4', // label
+			'p', // description
+			'a'
+		]
 	},
 	{
 		name: 'phonica',
 		url: 'http://www.phonicarecords.com/',
-		selector: '.product-place-holder'
+		primarySelector: '.product-place-holder',
+		secondarySelectors: [
+			'.archive-artist',
+			'.archive-title',
+			'.archive-label',
+			'a.archive-product-link' // problem: there are lots of links and so the sele. do I need this secondary selectors property to be an object so I can explicitly label them as artist, title, label, link and so on...?
+		]
+	},
+	{
+		name: 'test pressing',
+		url: 'http://testpressing.org',
+		primarySelector: '.app-post',
+		secondarySelectors: [
+			'.post-title',
+			'a'
+		]
 	}
 ]
 
-function dig (selector, page) {
+stores.forEach(store => {
+	store.dig = digStore.bind(store)
+})
+
+function digStore (page) {
+	const url = this.url;
+	const selectors = this.secondarySelectors;
 	const records = [];
-	$(selector, page).each(function () {
-		const record = $(this).text()
-			  .trim()
-			  .replace(/\r\n/g, '')
-			  .replace(/\t/g, ' ')
-			  .replace(/\n/g, '');
+	$(this.primarySelector, page).each(function (i, el) {
+		record = selectors.map(selector => {
+			// links are different
+			if (selector === 'a' || selector === 'a.archive-product-link') return $(selector, el).attr('href');
+			return $(selector, el).first().text().trim().replace(/\n/g, '');
+		});
 		records.push(record);
 	});
 	return records;
-}
+};
 
-const work = stores.map(store => {
+function work (store) {
 	return fetch(store.url)
 		.then(res => res.text())
-		.then(page => dig(store.selector, page))
-})
+		.then(store.dig);
+}
 
-Promise.all(work).then(results => console.log(results))
-
-// client-side? nice page with links?
+Promise.all(stores.map(work))
+	.then(console.log);
