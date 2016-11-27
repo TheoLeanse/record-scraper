@@ -1,5 +1,6 @@
 require('isomorphic-fetch');
 const $ = require('cheerio');
+const isEqual = require('lodash.isequal');
 
 const stores = [
 	{
@@ -31,9 +32,9 @@ const stores = [
 		url: 'https://hardwax.com/?paginate_by=50',
 		primarySelector: '.listing',
 		secondarySelectors: [
-			'.linebig', // artist and title
-			'.linesmall a', // label
-			'.linesmall p', // description
+			'.linebig',
+			'.linesmall a',
+			'.linesmall p',
 			'a'
 		]
 	},
@@ -42,10 +43,10 @@ const stores = [
 		url: 'http://honestjons.com/shop/latest_100_arrivals',
 		primarySelector: '.item',
 		secondarySelectors: [
-			'h2', // artist
-			'h3', // title
-			'h4', // label
-			'p', // description
+			'h2',
+			'h3',
+			'h4',
+			'p',
 			'a'
 		]
 	},
@@ -57,7 +58,7 @@ const stores = [
 			'.archive-artist',
 			'.archive-title',
 			'.archive-label',
-			'a.archive-product-link' // problem: there are lots of links and so the sele. do I need this secondary selectors property to be an object so I can explicitly label them as artist, title, label, link and so on...?
+			'a.archive-product-link'
 		]
 	},
 	{
@@ -69,26 +70,31 @@ const stores = [
 			'a'
 		]
 	}
-]
+];
 
-stores.forEach(store => {
-	store.dig = digStore.bind(store)
-})
+stores.forEach(store => store.dig = dig.bind(store));
 
-function digStore (page) {
+function dig (page) {
 	const url = this.url;
 	const selectors = this.secondarySelectors;
 	const records = [];
+
 	$(this.primarySelector, page).each((i, el) => {
 		record = selectors.map(selector => {
-			// links are different
 			if (selector === 'a' || selector === 'a.archive-product-link') return $(selector, el).attr('href');
 			return $(selector, el).first().text().trim().replace(/\n/g, '');
 		});
-		records.push(record.filter(Boolean)); // filtering Boolean means we can't assume a particular order in the results (i.e. empty descriptions)
+		records.push(record.filter(Boolean));
 	});
-	return records.filter(noEmptyArrays);
-};
+
+	return records
+		.filter(x => x.length > 1)
+		.sort()
+		.reduce((a, b) => {
+			if (!isEqual(a[a.length - 1], b)) a.push(b)
+			return a;
+		}, []);
+}
 
 function work (store) {
 	return fetch(store.url)
@@ -96,11 +102,7 @@ function work (store) {
 		.then(store.dig);
 }
 
+module.exports = () => Promise.all(stores.map(work));
+
 Promise.all(stores.map(work))
 	.then(console.log);
-
-// TODO: de-dupe and remove empty
-
-function noEmptyArrays (entry) {
-	return entry.length;
-}
