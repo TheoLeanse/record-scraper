@@ -69,6 +69,16 @@ const stores = [
 			'.post-title',
 			'a'
 		]
+	},
+	{
+		name: 'clone',
+		url: 'https://clone.nl/',
+		primarySelector: '.release',
+		secondarySelectors: [
+			'h3',
+			'h4',
+			'a'
+		]
 	}
 ];
 
